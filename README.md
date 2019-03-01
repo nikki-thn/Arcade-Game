@@ -1,8 +1,7 @@
 # Arcade-Game
 A breakout brick game using swift
 
-![GitHub Logo](/images/logo.png)
-Format: ![Alt Text](https://github.com/nikki-thn/Arcade-Game/blob/master/Screen%20Shot%202019-03-01%20at%206.37.49%20PM.png)
+![Alt Text](https://github.com/nikki-thn/Arcade-Game/blob/master/Screen%20Shot%202019-03-01%20at%206.37.49%20PM.png)
 
 Credits:
 Icon made by [https://www.flaticon.com/authors/google] from www.flaticon.com
