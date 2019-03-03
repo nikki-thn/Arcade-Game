@@ -13,7 +13,7 @@ class SetButtons: UIButton {
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        layer.borderWidth = 1
+        layer.borderWidth = 2
         layer.borderColor = UIColor.blue.cgColor
     }
     
