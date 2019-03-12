@@ -21,7 +21,7 @@
 /* Features to improve on:
 1. Better way to stop the game and handle nodes
 2. Methods can be organized better
- 
+3. Better way to handle segue
 */
 
 
