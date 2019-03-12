@@ -23,7 +23,7 @@ struct audioPlayer {
             audioPlayer.backgroundPlayer = try! AVAudioPlayer(contentsOf: AssortedMusics as URL)
             audioPlayer.backgroundPlayer.prepareToPlay()
             audioPlayer.backgroundPlayer.numberOfLoops = -1
-            //audioPlayer.backgroundPlayer.play()
+            audioPlayer.backgroundPlayer.play()
         }
     }
     
@@ -45,7 +45,7 @@ struct audioPlayer {
     
     static func muteBackgroundSound() {
         if audioPlayer.backgroundPlayer.isPlaying {
-            //audioPlayer.backgroundPlayer.pause()
+            audioPlayer.backgroundPlayer.pause()
         }
     }
     
