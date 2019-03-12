@@ -5,6 +5,25 @@
 //  Created by Nikki Truong on 2019-02-19.
 //  Copyright © 2019 PenguinExpress. All rights reserved.
 //
+//  Last Modified: March 12, 2019
+
+
+/* Features to work on:
+ 
+1. Pause
+2. Restart
+3. Fix bug when ball obj hit corners, it goes flat
+4. Sign In and store user score
+5. Leader board
+ 
+*/
+
+/* Features to improve on:
+1. Better way to stop the game and handle nodes
+2. Methods can be organized better
+ 
+*/
+
 
 import SpriteKit
 import GameplayKit
@@ -14,9 +33,12 @@ import AVFoundation
 struct gamePlay {
     static var gameHasEnded = false
     static var gameStarted = false
-    
+    static var ball : SKSpriteNode?
     static func stopGame() {
         gamePlay.gameHasEnded = true
+        gamePlay.ball?.position = CGPoint(x: -1000, y: -1000)
+        gamePlay.ball?.physicsBody!.pinned = true
+        gamePlay.ball?.isHidden = true
     }
 }
 
@@ -33,7 +55,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
     var gameLabel: SKLabelNode?
    
     //node objs
-    var ball : SKSpriteNode?
+    
     var floor : SKSpriteNode?
     var paddle : SKSpriteNode?
     
@@ -71,6 +93,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         let border = SKPhysicsBody(edgeLoopFrom: borderFrame)
         border.friction = 0
         self.physicsBody = border
+        border.restitution = 1
         border.mass = 1000000
         border.categoryBitMask = borderCategory
         border.contactTestBitMask = ballCategory
@@ -87,11 +110,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         scoreLabel?.position = CGPoint(x: -size.width / 2 + 200, y: size.height / 2 - 100)
         scoreLabel?.text = "Score: \(score)"
         
-        ball?.position = CGPoint(x: 0, y: 0)
-        ball?.physicsBody!.affectedByGravity = false
-        ball?.physicsBody!.pinned = false
-        ball?.isHidden = false
-        ball?.physicsBody!.mass = 1000000
+        gamePlay.ball?.position = CGPoint(x: 0, y: 0)
+        gamePlay.ball?.physicsBody!.affectedByGravity = false
+        gamePlay.ball?.physicsBody!.pinned = false
+        gamePlay.ball?.isHidden = false
+        //gamePlay.ball?.physicsBody!.mass = 1000000
         
         paddle?.physicsBody!.pinned = false
         
@@ -106,22 +129,22 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         
         //declare the nodes
         floor = childNode(withName: "bottom") as? SKSpriteNode
-        ball = childNode(withName: "ball") as? SKSpriteNode
+        gamePlay.ball = childNode(withName: "ball") as? SKSpriteNode
         paddle = childNode(withName: "paddle") as? SKSpriteNode
        
         //apply impulse so the ball moves
         
-        ball?.physicsBody!.applyImpulse(CGVector(dx: 50, dy: -50))
+        gamePlay.ball?.physicsBody!.applyImpulse(CGVector(dx: 50, dy: -50))
         paddle?.physicsBody!.mass = 100000 //
         
         //contact categories
-        ball?.physicsBody!.categoryBitMask = ballCategory
-        ball?.physicsBody!.contactTestBitMask = bottomCategory
-        ball?.physicsBody!.contactTestBitMask = paddleCategory
-        ball?.physicsBody!.contactTestBitMask = greenBrickCategory
-        ball?.physicsBody!.contactTestBitMask = blueBrickCategory
-        ball?.physicsBody!.contactTestBitMask = yellowBrickCategory
-        ball?.physicsBody!.contactTestBitMask = borderCategory
+        gamePlay.ball?.physicsBody!.categoryBitMask = ballCategory
+        gamePlay.ball?.physicsBody!.contactTestBitMask = bottomCategory
+        gamePlay.ball?.physicsBody!.contactTestBitMask = paddleCategory
+        gamePlay.ball?.physicsBody!.contactTestBitMask = greenBrickCategory
+        gamePlay.ball?.physicsBody!.contactTestBitMask = blueBrickCategory
+        gamePlay.ball?.physicsBody!.contactTestBitMask = yellowBrickCategory
+        gamePlay.ball?.physicsBody!.contactTestBitMask = borderCategory
         
         floor?.physicsBody?.categoryBitMask = bottomCategory
         floor?.physicsBody?.contactTestBitMask = ballCategory
@@ -142,8 +165,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
     //create bricks
     func createBrick(color: String, adjustYPosition: CGFloat, numRows: Int, category: UInt32) {
         
-        brickCalled += 1
-        
         //to calculate number of bricks per row
         let tmp_element = SKSpriteNode(imageNamed: "\(color).png")
         tmp_element.size = CGSize(width: 50, height: 20)
@@ -157,15 +178,16 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
                 element.name = "brick"
                 element.physicsBody = SKPhysicsBody(rectangleOf: element.size)
                 element.physicsBody?.categoryBitMask = category
-                element.physicsBody?.contactTestBitMask = ballCategory //brick collides with ball obj
+                //set contact of bricks and the ball
+                element.physicsBody?.contactTestBitMask = ballCategory
                 element.physicsBody?.affectedByGravity = false
-                element.physicsBody?.isDynamic = false
+                element.physicsBody?.restitution = 1
                 element.physicsBody?.allowsRotation = false
                 element.physicsBody?.mass = 10000000
                 addChild(element)
 
                 let elementX = -size.width / 2 + 100 + element.size.width * CGFloat(column)
-                let elementY = size.height / 2 - CGFloat(150 * brickCalled) - (element.size.height * CGFloat(row))
+                let elementY = size.height / 2 - CGFloat(adjustYPosition) - (element.size.height * CGFloat(row))
                 element.position = CGPoint(x: elementX , y: elementY)
             }
         }
@@ -188,7 +210,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
                 //Iterate through all elements on the scene to see if the click event has happened on the "Play/Resume" button
                 for node in theNodes {
                     if node.name == "restart" {
+                        print("restartis pressed")
                         node.removeFromParent()
+                        removeRestartBtn()
                         restartGame()
                         break
                     }
@@ -199,11 +223,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         
+        //user touch to start the game
         if gamePlay.gameStarted == false {
             gamePlay.gameStarted = true
             startGame()
         }
         
+        //after game has started, set paddle position to user touch location
         if gamePlay.gameHasEnded == false{
             for touch in touches {
                 let touchLocation = touch.location(in: self)
@@ -216,12 +242,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
     // MARK: - SKPhysicsContactDelegate
     func didBegin(_ contact: SKPhysicsContact) {
         
-        checkEndGame()
+        checkEndGame() // check if all bricks have been cleared
         
         if gamePlay.gameHasEnded == false {
             var firstBody: SKPhysicsBody
             var secondBody: SKPhysicsBody
-            // 2.
+            // Identify bodies of contacts
             if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
                 firstBody = contact.bodyA
                 secondBody = contact.bodyB
@@ -229,7 +255,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
                 firstBody = contact.bodyB
                 secondBody = contact.bodyA
             }
-            // 3.
+            
+            // Check for collisions
             if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == yellowBrickCategory {
                 secondBody.node?.removeFromParent()
                 score += yellow
@@ -248,12 +275,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
                 scoreLabel?.text = "Score: \(score)"
                 print("Green contact has been made.")
                 audioPlayer.playImpactSound(sound: "impact2")
-            } else if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == paddleCategory {
-                audioPlayer.playImpactSound(sound: "impact1")
+//            } else if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == paddleCategory {
+//                audioPlayer.playImpactSound(sound: "impact1")
                 //let randomX = Float.random(in: 0 ..< 100.0)
                 //let randomY = Float.random(in: 10 ..< 180)
                 //let force = CGVector(dx: CGFloat(50), dy: CGFloat(1000))
-                //ball?.physicsBody?.applyForce(force)
+                //gamePlay.ball?.physicsBody?.applyForce(force)
             } else if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == borderCategory {
                 audioPlayer.playImpactSound(sound: "impact1")
             } else if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == bottomCategory {
@@ -264,13 +291,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
             
             count += 1 //Speed up the ball every 10 impacts
             
-            if count == 10 {
+            if count == 3 {
                 speedUp() //speed up the game after every touch
             }
-            
         }
     }
     
+    //Check if all bricks have been cleared
     func checkEndGame() {
         var countBrick = 0
         for child in self.children{
@@ -282,13 +309,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         
         if countBrick == 0 {
             gamePlay.gameHasEnded = true
-            endGame()
+            gameIsFinished()
         }
     }
     
+    //spued up the game
     func speedUp() {
-        ball?.physicsBody!.angularDamping +=  0.001
-        ball?.physicsBody!.restitution += 0.0005
+        gamePlay.ball?.physicsBody!.angularDamping +=  0.001
+        gamePlay.ball?.physicsBody!.restitution += 0.0005
         count = 0
     }
     
@@ -308,27 +336,35 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         audioPlayer.playImpactSound(sound: "gameOver")
     }
     
-    func endGame() {
+    //set end game scene
+    func setEndGame() {
         
-        ball?.physicsBody!.affectedByGravity = true
-        ball?.physicsBody!.pinned = true
-        ball?.isHidden = true
+        gamePlay.ball?.position = CGPoint(x: -size.width / 2, y: -size.height / 2)
+        gamePlay.ball?.physicsBody!.pinned = true
+        gamePlay.ball?.isHidden = true
         
         paddle?.physicsBody!.pinned = true
         
         scoreLabel?.position = CGPoint(x: 0, y: 200)
-    
-        showRestartBtn()
-        displayLabel(textLabel: "Game Ended")
     }
     
+    //for when user clears all the bricks
+    func gameIsFinished() {
+        showRestartBtn()
+        setEndGame()
+        displayLabel(textLabel: "Level completed!")
+        showRestartBtn()
+    }
+    
+    //game over ball touched the floor
     func gameOver() {
-        endGame()
+        setEndGame()
         gameEndedEffect()
         displayLabel(textLabel: "Game Over")
         showRestartBtn()
     }
     
+    //show Restart button when game ended
     func showRestartBtn() {
         let restartBtn = SKSpriteNode(imageNamed: "restart")
         restartBtn.size = CGSize(width:75, height:75)
@@ -337,6 +373,16 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         addChild(restartBtn)
     }
     
+    //remove restart btn
+    func removeRestartBtn() {
+        for child in self.children{
+            if child.name == "restart"{
+                child.removeFromParent()
+            }
+        }
+    }
+    
+    //Set text for game label
     func displayLabel(textLabel: String){
         gameLabel?.isHidden = false
         gameLabel?.fontSize = 100
@@ -344,6 +390,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate  {
         gameLabel?.text = textLabel
     }
 
+    //start a new game
     func restartGame() {
         clearNodes()
         setUp()
